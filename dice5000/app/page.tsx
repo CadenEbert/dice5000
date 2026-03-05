@@ -3,6 +3,7 @@
 import Test from "./components/GetUsers";
 import Form from "./components/Form";
 import { useAuthState } from "./components/useAuthState";
+import Nav from "./components/nav";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuthState();
@@ -12,6 +13,7 @@ export default function Home() {
 
   return (
     <>
+      <Nav></Nav>
       <div>Welcome {user?.email}</div>
 
       <div className="flex h-[calc(100vh-60px)] overflow-hidden">

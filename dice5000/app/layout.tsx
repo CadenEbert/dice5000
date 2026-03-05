@@ -37,7 +37,7 @@ export default function RootLayout({
       >
         
         <ApolloClientProvider>
-          <Nav></Nav>
+          
           <main className="flex-1 overflow-hidden">
             {children}
           </main>
