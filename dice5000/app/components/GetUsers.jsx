@@ -13,7 +13,7 @@ const GET_USERS = gql`
     }
 `;
 
-export default function Test() {
+export default function GetUsers() {
     const { loading, error, data } = useQuery(GET_USERS, {
         variables: { id: "1" },
     });
@@ -24,7 +24,7 @@ export default function Test() {
 
     return (
         <div>
-            <p>Test</p>
+            <p>Get Users</p>
             <p>First name: {data.user.fname}</p>
             <p>Last name: {data.user.lname}</p>
             <p>ID: {data.user.id}</p>
