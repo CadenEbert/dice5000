@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   getAuth,
   signInWithPopup,
@@ -13,12 +14,13 @@ import app from "../lib/firebase";
 const auth = getAuth(app);
 
 export default function SignInScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const signInWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
-  const signInWithGithub = () => signInWithPopup(auth, new GithubAuthProvider());
-  const signInWithEmail = () => signInWithEmailAndPassword(auth, email, password);
+  const signInWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider()).then(() => { router.push("/");});
+  const signInWithGithub = () => signInWithPopup(auth, new GithubAuthProvider()).then(() => { router.push("/");});
+  const signInWithEmail = () => signInWithEmailAndPassword(auth, email, password).then(() => { router.push("/");});
 
   return (
     <div className="flex items-center justify-center h-screen bg-green-100">

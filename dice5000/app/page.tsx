@@ -4,28 +4,70 @@ import Test from "./components/GetUsers";
 import Form from "./components/Form";
 import { useAuthState } from "./components/useAuthState";
 import Nav from "./components/nav";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuthState();
+  const router = useRouter();
+
+  
+
 
   if (loading) return <div>Loading...</div>;
-  if (!isAuthenticated) return <div>Please sign in.</div>;
+  if (!isAuthenticated) return useEffect(() => {
+    router.push("/login"); 
+  }, [router]);;
 
   return (
     <>
       <Nav></Nav>
-      <div>Welcome {user?.email}</div>
+      
 
       <div className="flex h-[calc(100vh-60px)] overflow-hidden">
         <div className="flex flex-col flex-1">
-          <div className="bg-green-500 w-350 h-150 overflow-hidden">
+          <div className="bg-green-500 w-250 h-full overflow-hidden">
             <h1>box1</h1>
             <Form />
+            <Test />
           </div>
 
-          <div className="flex-1 bg-blue-500 h-full">
-            <h1>whats goods</h1>
-            <Test />
+          <div className="flex flex-row  bg-gray-200 p-1 gap-2">
+
+            <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+              <h1 className="text-center font-bold text-lg">
+                User 1
+              </h1>
+              <p>Score</p>
+
+            </div>
+
+            <div className="flex1 p-2  border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+              <h1 className="text-center font-bold text-lg">
+                User 2
+              </h1>
+              <p>Score</p>
+
+            </div>
+
+            <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+              <h1 className="text-center font-bold text-lg">
+                User 3
+              </h1>
+              <p>Score</p>
+
+            </div>
+
+            <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+              <h1 className="text-center font-bold text-lg">
+                User 4
+              </h1>
+              <p>Score</p>
+
+            </div>
+            
+           
           </div>
         </div>
 
