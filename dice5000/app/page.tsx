@@ -1,7 +1,6 @@
 "use client";
 
-import Test from "./components/GetUsers";
-import Form from "./components/Form";
+
 import { useAuthState } from "./components/useAuthState";
 import Nav from "./components/nav";
 import { useRouter } from "next/navigation";
@@ -25,13 +24,29 @@ export default function Home() {
       <Nav></Nav>
       
 
-      <div className="flex h-[calc(100vh-60px)] overflow-hidden">
+      <div className="flex h-[calc(100vh-60px)] overflow-hidden bg-green-800">
+
         <div className="flex flex-col flex-1">
-          <div className="bg-green-500 w-250 h-full overflow-hidden">
-            <h1>box1</h1>
-            <Form />
-            <Test />
+        <div className="bg-[radial-gradient(circle,#009107,#009107,#166534)] w-250 h-full overflow-hidden rounded"> 
+          <h1 className="text-center text-2xl font-bold text-white p-5 w-full">
+            User1's Turn
+          </h1>
+
+          <div className="flex flex-row  p-1 gap-2 items-center justify-center">
+            <p>A</p>
+            <p>A</p>
+            <p>A</p>
+            <p>A</p>
+            <p>A</p>
+
           </div>
+
+          <div className="flex items-center justify-center w-full h-full">
+            <button className="flex p-2 w-50 border rounded bg-[radial-gradient(circle,#E8E841,#E8E841,#CFCF17)] hover:bg-yellow-200  text-xl">ROLL</button>
+          </div>
+            
+            
+        </div>
 
           <div className="flex flex-row  bg-gray-200 p-1 gap-2">
 
@@ -71,7 +86,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white-500 w-250 h-full overflow-hidden flex-1 flex items-center justify-center">
+        <div className="bg-white w-250 h-full overflow-hidden flex-1 flex items-center justify-center">
           <div className="flex flex-col space-x-8 p-20 border bg-yellow-50">
             <div className="flex-row">
               <p>Input Lobby Code: </p>
