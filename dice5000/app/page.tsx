@@ -42,7 +42,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center justify-center w-full h-full">
-            <button className="flex p-2 w-50 border rounded bg-[radial-gradient(circle,#E8E841,#E8E841,#CFCF17)] hover:bg-yellow-200  text-xl">ROLL</button>
+            <button className="flex p-2 w-50 border rounded bg-[radial-gradient(circle,#E8E841,#E8E841,#CFCF17)] hover:bg-[radial-gradient(circle,#FDE68A,#FDE68A,#FCD34D)] text-xl">ROLL</button>
           </div>
             
             
