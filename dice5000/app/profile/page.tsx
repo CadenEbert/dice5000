@@ -46,9 +46,9 @@ export default function Profile() {
     async function updateDisplayName() {
         const newName = document.getElementById("displayNameInput") as HTMLInputElement;
         if (!newName.value) return;
-        if (newName.length() >= 12) return;
+        if (newName.value.length >= 12) return;
 
-        
+
     };
 
 
