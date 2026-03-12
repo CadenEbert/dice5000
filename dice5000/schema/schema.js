@@ -6,7 +6,8 @@ const UserType = new GraphQLObjectType({
     fields: {
         id: {type: GraphQLString},
         fname: {type: GraphQLString},
-        lname: {type: GraphQLString},
+        score: {type: GraphQLString},
+        color: {type: GraphQLString}
     }
 })
 
@@ -18,10 +19,11 @@ const Mutation = new GraphQLObjectType({
             args: {
                 id: {type: GraphQLString},
                 fname: {type: GraphQLString},
-                lname: {type: GraphQLString},
+                score: {type: GraphQLString},
+                color: {type: GraphQLString}
             },
             resolve(parentValue, args) {
-                return {id: args.id, fname: args.fname, lname: args.lname};
+                return {id: args.id, fname: args.fname, color: args.color};
             }
         }
     }
@@ -34,7 +36,7 @@ const RootQuery = new GraphQLObjectType ({
             type: UserType,
             args: {id: {type: GraphQLString}},
             resolve(parentValue, args) {
-                return {id: 1, fname: "Caden", lname: "Ebert"};
+                return {id: 1, fname: "Caden", color: "blue"};
 
             }
         }

@@ -3,18 +3,19 @@
 import { useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client/core';
 
-const GET_USERS = gql`
+const GET_USER_INFO = gql`
     query($id: String!) {
         user(id: $id) {
             id
             fname
-            lname
+            color
+            score
         }
     }
 `;
 
 export default function GetUsers() {
-    const { loading, error, data } = useQuery(GET_USERS, {
+    const { loading, error, data } = useQuery(GET_USER_INFO, {
         variables: { id: "1" },
     });
 
@@ -26,7 +27,8 @@ export default function GetUsers() {
         <div>
             <p>Get Users</p>
             <p>First name: {data.user.fname}</p>
-            <p>Last name: {data.user.lname}</p>
+            <p>Favorite color: {data.user.color}</p>
+            <p>Score: {data.user.score}</p>
             <p>ID: {data.user.id}</p>
         </div>
     );
