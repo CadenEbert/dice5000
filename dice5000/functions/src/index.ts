@@ -1,9 +1,15 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
-import { createYoga, createSchema } from "graphql-yoga";
+import { createYoga, createSchema, createPubSub } from "graphql-yoga";
+
 
 admin.initializeApp();
 const db = admin.firestore();
+
+
+const pubsub = createPubSub<{
+  MESSAGE_ADDED: [{ messageAdded: { id: string; text: string } }];
+}>();
 
 const typeDefs = `
   type User {
@@ -12,6 +18,11 @@ const typeDefs = `
     displayName: String
     wins: Int
     prefcol: String
+  }
+
+  type Message {
+    id: ID!
+    text: String!
   }
 
   type Query {
@@ -24,7 +35,25 @@ const typeDefs = `
     updateDisplayNameByEmail(email: String!, displayName: String!): User
     updatePrefColorByEmail(email: String!, prefcol: String!): User
   }
+
+  type Subscription {
+    messageAdded: Message!
+  }
 `;
+
+db.collection("messages").onSnapshot((snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    if (change.type === "added") {
+      const message = change.doc.data() as { text?: string };
+      pubsub.publish("MESSAGE_ADDED", {
+        messageAdded: {
+          id: change.doc.id,
+          text: message.text ?? "",
+        },
+      });
+    }
+  });
+});
 
 const resolvers = {
   Query: {
@@ -86,7 +115,11 @@ const resolvers = {
       return updatedDoc.data();
     },
   },
+
+
+
 };
+
 
 const yoga = createYoga({
   schema: createSchema({ typeDefs, resolvers }),
