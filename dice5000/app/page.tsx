@@ -39,7 +39,7 @@ export default function Home() {
   `;
 
   async function createLobbyFunc() {
-    const response = await fetch("http://localhost:4000/graphql", {
+    const response = await fetch("http://192.168.0.180:4000/graphql", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -59,7 +59,7 @@ export default function Home() {
   }
 
   async function joinLobbyFunc() {
-    const response = await fetch("http://localhost:4000/graphql", {
+    const response = await fetch("http://192.168.0.180:4000/graphql", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

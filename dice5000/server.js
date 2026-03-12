@@ -47,6 +47,7 @@ const typeDefs = `
     userByEmail(email: String!): User
     lobby(id: ID!): Lobby
     lobbies: [Lobby!]!
+    getMessages(lobbyId: ID!): [Message!]!
   }
 
   type Mutation {
@@ -67,6 +68,7 @@ const db = admin.firestore();
 const realtimeDb = admin.database();
 
 const lobbies = {};
+const users = {};
 
 realtimeDb.ref("messages").on("child_added", (snapshot) => {
     const message = snapshot.val();
@@ -97,6 +99,11 @@ const resolvers = {
             if (snap.empty) return null;
             return snap.docs[0].data();
         },
+        getMessages: async (_, { lobbyId }) => {
+            const snap = await realtimeDb.ref("messages").orderByChild("lobbyId").equalTo(lobbyId).get();
+            if (!snap.val()) return [];
+            return Object.entries(snap.val()).map(([key, val]) => ({ ...val, id: key }));
+        }
     },
     Mutation: {
         updateDisplayNameByEmail: async (_, { email, displayName }) => {
@@ -113,36 +120,29 @@ const resolvers = {
             await ref.update({ prefcol });
             return (await ref.get()).data();
         },
-        createLobby: (_, { hostEmail }) => {
+        createLobby: async (_, { hostEmail }) => {
             const id = Math.random().toString(36).substring(2, 6).toUpperCase();
-
-            const lobby = {
-                id,
-                host: hostEmail,
-                players: [hostEmail],
-            };
+            const lobby = { id, host: hostEmail, players: [hostEmail] };
 
             lobbies[id] = lobby;
+            await db.collection("lobbies").doc(id).set(lobby);  // ← add this
 
-            pubsub.publish("LOBBY_UPDATED_" + id, {
-                lobbyUpdated: lobby,
-            });
-
+            pubsub.publish("LOBBY_UPDATED_" + id, { lobbyUpdated: lobby });
             return lobby;
         },
-        joinLobby: (_, { lobbyId, playerEmail }) => {
-            const lobby = lobbies[lobbyId];
-
+        joinLobby: async (_, { lobbyId, playerEmail }) => {
+            let lobby = lobbies[lobbyId];
             if (!lobby) {
-                throw new Error("Lobby not found");
+                const doc = await db.collection("lobbies").doc(lobbyId).get();
+                if (!doc.exists) throw new Error("Lobby not found");
+                lobby = doc.data();
+                lobbies[lobbyId] = lobby;  
             }
 
             lobby.players.push(playerEmail);
+            await db.collection("lobbies").doc(lobbyId).update({ players: lobby.players });  // ← persist
 
-            pubsub.publish("LOBBY_UPDATED_" + lobbyId, {
-                lobbyUpdated: lobby,
-            });
-
+            pubsub.publish("LOBBY_UPDATED_" + lobbyId, { lobbyUpdated: lobby });
             return lobby;
         },
         sendMessage: async (_, { lobbyId, text, sender }) => {

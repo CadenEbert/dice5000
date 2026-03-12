@@ -1,33 +1,77 @@
 "use client";
 
 import { useAuthState } from "@/app/components/useAuthState";
-import { sendError } from "next/dist/server/api-utils";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { text } from "stream/consumers";
 
+import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+
+
+type User = {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    wins: number | null;
+    prefcol: string | null;
+};
 
 
 
 
 
 export default function LobbyPage() {
+    const [messages, setMessages] = useState<{ id: string; text: string; sender: string }[]>([]);
     const [chatMessage, setChatMessage] = useState("");
+    const [userData, setUserData] = useState<User | null>(null);
+
+
     const { user } = useAuthState();
-    const { loading, isAuthenticated } = useAuthState();
-    const router = useRouter();
-    const [lobbyCode, setLobbyCode] = useState("");
+    const params = useParams<{ id: string }>();
+    const lobbyCode = params?.id ?? "";
 
-
-    const MessageAdded = `
-    subscription MessageAdded($lobbyId: ID!) {
-        messageAdded(lobbyId: $lobbyId) {
-            id
-            text
-            sender
-        }
+    const query = `
+  query GetUserByEmail($email: String!) {
+    userByEmail(email: $email) {
+      uid
+      email
+      displayName
+      wins
+      prefcol
     }
-    `;
+  }
+`;
+
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    async function fetchUserByEmail() {
+        const res = await fetch("https://us-central1-dice5000.cloudfunctions.net/graphqlApi", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                query,
+                variables: {
+                    email: user?.email,
+                },
+            }),
+        });
+        const { data, errors } = await res.json();
+
+        setUserData(data.userByEmail);
+        if (errors) {
+            console.error(errors);
+            return null;
+        }
+        if (!data.userByEmail) {
+            console.error("User not found");
+            return null;
+        }
+        return data.userByEmail;
+    };
+
+
 
     const sendMessage = `
         mutation SendMessage($lobbyId: ID!, $text: String!, $sender: String!) {
@@ -38,26 +82,59 @@ export default function LobbyPage() {
     }
 `;
 
+    const getMessages = `
+        query GetMessages($lobbyId: ID!) {
+        getMessages(lobbyId: $lobbyId) {
+            id
+            text
+            sender
+        }
+    }
+`;
+
+    useEffect(() => {
+        if (user?.email) fetchUserByEmail();
+    }, [user]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    useEffect(() => {
+        if (!lobbyCode) return;
+
+
+        const fetchMessages = async () => {
+            const response = await fetch("http://192.168.0.180:4000/graphql", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: `query { getMessages(lobbyId: "${lobbyCode}") { id text sender } }`
+                }),
+            });
+            const result = await response.json();
+            setMessages(result?.data?.getMessages ?? []);
+        };
+
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 2000);
+        return () => clearInterval(interval);
+    }, [lobbyCode]);
+
     async function handleChatKey(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key === "Enter") {
-            const text = chatMessage;
+            const text = chatMessage.trim();
+            if (!text) return;
             setChatMessage("");
 
-            await fetch("http://localhost:4000/graphql", {
+            const res = await fetch("http://192.168.0.180:4000/graphql", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    query: sendMessage,
-                    variables: {
-                        lobbyId: lobbyCode,
-                        text: text,
-                        sender: user?.email
-                    }
-                })
+                    query: `mutation { sendMessage(lobbyId: "${lobbyCode}", text: "${text}", sender: "${userData?.displayName}") { id text } }`
+                }),
             });
-            
+            const result = await res.json();
         }
     }
 
@@ -94,11 +171,14 @@ export default function LobbyPage() {
 
                 <div className="flex flex-row  bg-gray-700 w-full p-1 gap-2">
 
-                    <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
+                    <div style={{ background: userData?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
-                            User 1
+                            {userData?.displayName ?? "User 1"}
                         </h1>
-                        <p>Score</p>
+                        <div className="w-full h-3/4 items-center justify-center flex">
+                            <h1 className="text-6xl font-bold">0</h1>
+
+                        </div>
 
                     </div>
 
@@ -106,7 +186,10 @@ export default function LobbyPage() {
                         <h1 className="text-center font-bold text-lg">
                             User 2
                         </h1>
-                        <p>Score</p>
+                        <div className="w-full h-3/4 items-center justify-center flex">
+                            <h1 className="text-6xl font-bold">0</h1>
+
+                        </div>
 
                     </div>
 
@@ -114,7 +197,10 @@ export default function LobbyPage() {
                         <h1 className="text-center font-bold text-lg">
                             User 3
                         </h1>
-                        <p>Score</p>
+                        <div className="w-full h-3/4 items-center justify-center flex">
+                            <h1 className="text-6xl font-bold">0</h1>
+
+                        </div>
 
                     </div>
 
@@ -122,7 +208,10 @@ export default function LobbyPage() {
                         <h1 className="text-center font-bold text-lg">
                             User 4
                         </h1>
-                        <p>Score</p>
+                        <div className="w-full h-3/4 items-center justify-center flex">
+                            <h1 className="text-6xl font-bold">0</h1>
+
+                        </div>
 
                     </div>
 
@@ -131,16 +220,25 @@ export default function LobbyPage() {
             </div>
 
             <div className="bg-gray-700   w-3/10 h-full overflow-hidden  ">
-                <div className="w-full h-1/2 bg-gray-300 rounded">
-                    <h1>TEST</h1>
+                <div className="w-full h-1/2 bg-gray-500 rounded flex flex-col justify-end min-h-0">
+                    <div className="p-2 overflow-y-auto flex-1 min-h-0">
+                        {messages.map((m) => (
+                            <p key={m.id} >
+                                <strong style={{ color: userData?.prefcol ?? "white" }}>{m.sender}: </strong> {m.text}
+                            </p>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
 
-
-                </div>
-                <div className="w-full h-1/2 bg-gray-500 rounded flex flex-col mt-auto justify-end">
-                    <p>[{chatMessage}]</p>
-                    <input type="text" placeholder="chat" className="w-full rounded p-2" id="chatbox" value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyDown={handleChatKey} />
+                    <input
+                        type="text"
+                        placeholder="chat"
+                        className="w-full rounded p-2"
+                        id="chatbox"
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.currentTarget.value)}
+                        onKeyDown={handleChatKey}
+                    />
                 </div>
 
 
