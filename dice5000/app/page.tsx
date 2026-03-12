@@ -50,9 +50,9 @@ export default function Home() {
 
         </div>
 
-        <div className="flex flex-row  bg-gray-200 w-full p-1 gap-2">
+        <div className="flex flex-row  bg-gray-700 w-full p-1 gap-2">
 
-          <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+          <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
             <h1 className="text-center font-bold text-lg">
               User 1
             </h1>
@@ -60,7 +60,7 @@ export default function Home() {
 
           </div>
 
-          <div className="flex1 p-2  border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+          <div className="flex1 p-2  border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
             <h1 className="text-center font-bold text-lg">
               User 2
             </h1>
@@ -68,7 +68,7 @@ export default function Home() {
 
           </div>
 
-          <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+          <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
             <h1 className="text-center font-bold text-lg">
               User 3
             </h1>
@@ -76,7 +76,7 @@ export default function Home() {
 
           </div>
 
-          <div className="flex1 p-2 border rounded h-65 w-full bg-white mb-5 items-center justify-center ">
+          <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
             <h1 className="text-center font-bold text-lg">
               User 4
             </h1>
@@ -88,7 +88,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="bg-gray-100   w-3/10 h-full overflow-hidden  ">
+      <div className="bg-gray-700   w-3/10 h-full overflow-hidden  ">
         <Nav></Nav>
 
         <div className="flex items-center justify-center w-full h-3/4">

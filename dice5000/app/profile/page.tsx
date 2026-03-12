@@ -27,6 +27,26 @@ export default function Profile() {
   }
 `;
 
+    const nameMutationQuery = `
+  mutation UpdateDisplayNameByEmail($email: String!, $displayName: String!) {
+    updateDisplayNameByEmail(email: $email, displayName: $displayName) {
+      uid
+    }
+  }
+`;
+
+    const colorMutationQuery = `
+  mutation UpdatePrefColorByEmail($email: String!, $prefcol: String!) {
+    updatePrefColorByEmail(email: $email, prefcol: $prefcol) {
+        uid
+    }
+  }
+`;
+
+    
+   
+    
+
     const { user, loading } = useAuthState();
     const router = useRouter();
 
@@ -48,12 +68,67 @@ export default function Profile() {
         if (!newName.value) return;
         if (newName.value.length >= 12) return;
 
+        const res = await fetch("https://us-central1-dice5000.cloudfunctions.net/graphqlApi", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+            query: nameMutationQuery,     
+            variables: {
+                email: user?.email,
+                displayName: newName.value,
+            },
+        }),
 
+    });
+
+    const { data, errors } = await res.json();
+    if (errors) {
+        console.error(errors);
+        return null;
+    }
+
+
+    await fetchUserByEmail();
+    newName.value = "";
+
+
+        
+       
     };
 
 
     async function updatePrefColor() {
-        console.log("hi")
+        const newColor = document.getElementById("colors") as HTMLInputElement;
+        if (!newColor.value) return;
+        
+        
+
+        const res = await fetch("https://us-central1-dice5000.cloudfunctions.net/graphqlApi", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+            query: colorMutationQuery,     
+            variables: {
+                email: user?.email,
+                prefcol: newColor.value,
+            },
+        }),
+
+    });
+
+    const { data, errors } = await res.json();
+    if (errors) {
+        console.error(errors);
+        return null;
+    }
+
+
+    await fetchUserByEmail();
+    newColor.value = "";
     };
 
 

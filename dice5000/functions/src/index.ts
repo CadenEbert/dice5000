@@ -103,6 +103,6 @@ export const createUserDocument = functions.auth.user().onCreate(async (user) =>
     displayName: user.displayName ?? null,
     wins: 0,
     uid: user.uid,
-    prefcol: "blue",
+    prefcol: "Blue",
   });
 });
