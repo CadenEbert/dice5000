@@ -1,6 +1,8 @@
 "use client";
 
+import Nav from "@/app/components/nav";
 import { useAuthState } from "@/app/components/useAuthState";
+import { set } from "firebase/database";
 
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +26,8 @@ export default function LobbyPage() {
     const [chatMessage, setChatMessage] = useState("");
     const [userData, setUserData] = useState<User | null>(null);
     const [players, setPlayers] = useState<User[]>([]);
+    const [gameState, setGameState] = useState<"waiting" | "playing" | "ended">("waiting");
+    
 
 
 
@@ -136,6 +140,11 @@ export default function LobbyPage() {
     }
 
     useEffect(() => {
+        if (!lobbyCode) return;
+        setGameState("waiting");
+    }, [lobbyCode]);
+
+    useEffect(() => {
         if (user?.email) fetchUserByEmail();
     }, [user]);
 
@@ -200,24 +209,27 @@ export default function LobbyPage() {
 
 
     return (
+       
+        
         <div className="flex w-full h-full overflow-hidden bg-green-800">
 
-            <div className="flex w-full h-full flex-col flex-1">
+            <div className="flex w-full h-full flex-col flex-1 ">
                 <div className="bg-[radial-gradient(circle,#009107,#009107,#166534)] w-full h-full overflow-hidden rounded">
                     <h1 className="text-center text-2xl font-bold text-white p-5 w-full">
-                        User1's Turn
+                        Lobby Code: {lobbyCode}
                     </h1>
 
-                    <div className="flex flex-row  p-1 gap-2 items-center justify-center">
-                        <p>A</p>
-                        <p>A</p>
-                        <p>A</p>
-                        <p>A</p>
-                        <p>A</p>
+                    <div className="flex flex-row  p-1 gap-2 items-center justify-center m-30">
+                        <img src={"/images/dice-six-faces-one.png"} className="w-1/9 h-1/9" />
+                        <img src={"/images/dice-six-faces-two.png"}  className="w-1/9 h-1/9" />
+                        <img src={"/images/dice-six-faces-three.png"}  className="w-1/9 h-1/9" />
+                        <img src={"/images/dice-six-faces-four.png"}  className="w-1/9 h-1/9" />
+                        <img src={"/images/dice-six-faces-five.png"}  className="w-1/9 h-1/9" />
+                        <img src={"/images/dice-six-faces-six.png"}  className="w-1/9 h-1/9" />
 
                     </div>
 
-                    <div className="flex items-center justify-center w-full h-full gap-2">
+                    <div className="flex items-center justify-center w-full  gap-2">
                         <button className=" flex p-2 w-50 border-black justify-center items-center border-1 rounded bg-[radial-gradient(circle,#E84141,#E84141,#CF1717)] hover:bg-[radial-gradient(circle,#ff7269,#ff7269,#fa584d)] text-xl">ROLL</button>
                         <button className=" flex p-2 w-50 border-black justify-center items-center border-1 rounded bg-[radial-gradient(circle,#E8E841,#E8E841,#CFCF17)] hover:bg-[radial-gradient(circle,#FDE68A,#FDE68A,#FCD34D)] text-xl">BANK</button>
 
@@ -227,7 +239,7 @@ export default function LobbyPage() {
 
                 </div>
 
-                <div className="flex flex-row  bg-gray-700 w-full p-1 gap-2">
+                <div className="flex flex-row  bg-gray-300 w-full p-1 gap-2">
 
                     <div style={{ background: players[0]?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
@@ -277,9 +289,10 @@ export default function LobbyPage() {
                 </div>
             </div>
 
-            <div className="bg-gray-700   w-3/10 h-full overflow-hidden  ">
-                <div className="w-full h-1/2 bg-gray-500 rounded flex flex-col justify-end min-h-0">
-                    <div className="p-2 overflow-y-auto flex-1 min-h-0">
+            <div className="bg-gray-300 w-3/10 h-full overflow-hidden flex flex-col">
+                <Nav></Nav>
+                <div className="flex-1 w-full bg-gray-300 flex flex-col justify-end min-h-0">
+                    <div className="p-2 overflow-y-auto flex-1 min-h-0 ">
                         {messages.map((m) => (
                             <p key={m.id} >
                                 <strong style={{ color: players.find(p => p.displayName === m.sender)?.prefcol ?? "white" }}>{m.sender}: </strong> {m.text}
@@ -287,16 +300,17 @@ export default function LobbyPage() {
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
-
+                        <div className="border rounded mb-7 m-3 ">
                     <input
                         type="text"
                         placeholder="chat"
-                        className="w-full rounded p-2"
+                        className="w-full rounded p-3 "
                         id="chatbox"
                         value={chatMessage}
                         onChange={(e) => setChatMessage(e.currentTarget.value)}
                         onKeyDown={handleChatKey}
                     />
+                    </div>
                 </div>
 
 
@@ -304,5 +318,6 @@ export default function LobbyPage() {
 
             </div>
         </div>
+         
     );
 }

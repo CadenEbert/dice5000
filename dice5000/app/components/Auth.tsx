@@ -23,7 +23,7 @@ export default function SignInScreen() {
   const signInWithEmail = () => signInWithEmailAndPassword(auth, email, password).then(() => { router.push("/");});
 
   return (
-    <div className="flex items-center justify-center h-screen bg-green-100">
+    <div className="flex items-center justify-center h-screen bg-gray-700">
 
     <div className=" items-center justify-center border bg-gray-100 p-5 w-96 rounded-lg shadow-lg">
         <div className="flex flex-col items-center border-b mb-4 pb-4 border-gray-400">
