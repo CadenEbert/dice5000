@@ -24,7 +24,9 @@ export default function Home() {
     mutation CreateLobby($hostEmail: String!) {
       createLobby(hostEmail: $hostEmail) {
         id
-        players
+        players {
+          email
+        }
       }
     }
   `;
@@ -33,7 +35,9 @@ export default function Home() {
     mutation JoinLobby($lobbyId: ID!, $playerEmail: String!) {
       joinLobby(lobbyId: $lobbyId, playerEmail: $playerEmail) {
         id
-        players
+        players {
+          email
+        }
       }
     }
   `;

@@ -7,8 +7,12 @@ const { makeExecutableSchema } = require("@graphql-tools/schema");
 const { PubSub } = require("graphql-subscriptions");
 const cors = require("cors");
 const admin = require("firebase-admin");
+const path = require("node:path");
 
-const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? path.resolve(__dirname, process.env.GOOGLE_APPLICATION_CREDENTIALS)
+    : path.join(__dirname, "serviceAccount.json");
+const serviceAccount = require(serviceAccountPath);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -30,7 +34,7 @@ const typeDefs = `
   type Lobby {
     id: ID!
     host: String!
-    players: [String!]!
+    players: [User!]!
   }
 
 
@@ -99,6 +103,28 @@ const resolvers = {
             if (snap.empty) return null;
             return snap.docs[0].data();
         },
+        lobby: async (_, { id }) => {
+            if (lobbies[id]) return lobbies[id];
+
+            const doc = await db.collection("lobbies").doc(id).get();
+            if (!doc.exists) return null;
+
+            const lobby = doc.data();
+            lobbies[id] = lobby;
+            return lobby;
+        },
+        lobbies: async () => {
+            const snap = await db.collection("lobbies").get();
+            const allLobbies = snap.docs.map((d) => d.data());
+
+            allLobbies.forEach((lobby) => {
+                if (lobby?.id) {
+                    lobbies[lobby.id] = lobby;
+                }
+            });
+
+            return allLobbies;
+        },
         getMessages: async (_, { lobbyId }) => {
             const snap = await realtimeDb.ref("messages").orderByChild("lobbyId").equalTo(lobbyId).get();
             if (!snap.val()) return [];
@@ -125,7 +151,7 @@ const resolvers = {
             const lobby = { id, host: hostEmail, players: [hostEmail] };
 
             lobbies[id] = lobby;
-            await db.collection("lobbies").doc(id).set(lobby);  // ← add this
+            await db.collection("lobbies").doc(id).set(lobby);
 
             pubsub.publish("LOBBY_UPDATED_" + id, { lobbyUpdated: lobby });
             return lobby;
@@ -136,11 +162,11 @@ const resolvers = {
                 const doc = await db.collection("lobbies").doc(lobbyId).get();
                 if (!doc.exists) throw new Error("Lobby not found");
                 lobby = doc.data();
-                lobbies[lobbyId] = lobby;  
+                lobbies[lobbyId] = lobby;
             }
 
             lobby.players.push(playerEmail);
-            await db.collection("lobbies").doc(lobbyId).update({ players: lobby.players });  // ← persist
+            await db.collection("lobbies").doc(lobbyId).update({ players: lobby.players });
 
             pubsub.publish("LOBBY_UPDATED_" + lobbyId, { lobbyUpdated: lobby });
             return lobby;
@@ -161,6 +187,18 @@ const resolvers = {
             pubsub.publish(`MESSAGE_ADDED_${lobbyId}`, { messageAdded: message });
 
             return message;
+        }
+    },
+    Lobby: {
+        players: async (lobby) => {
+            const snaps = await Promise.all(
+                lobby.players.map(email =>
+                    db.collection("users").where("email", "==", email).limit(1).get()
+                )
+            );
+            return snaps
+                .filter(snap => !snap.empty)
+                .map(snap => snap.docs[0].data());
         }
     },
     Subscription: {

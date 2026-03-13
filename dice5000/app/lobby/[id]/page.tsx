@@ -23,11 +23,14 @@ export default function LobbyPage() {
     const [messages, setMessages] = useState<{ id: string; text: string; sender: string }[]>([]);
     const [chatMessage, setChatMessage] = useState("");
     const [userData, setUserData] = useState<User | null>(null);
+    const [players, setPlayers] = useState<User[]>([]);
+
 
 
     const { user } = useAuthState();
     const params = useParams<{ id: string }>();
     const lobbyCode = params?.id ?? "";
+    const graphqlUrl = "http://192.168.0.180:4000/graphql";
 
     const query = `
   query GetUserByEmail($email: String!) {
@@ -44,8 +47,9 @@ export default function LobbyPage() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+
     async function fetchUserByEmail() {
-        const res = await fetch("https://us-central1-dice5000.cloudfunctions.net/graphqlApi", {
+        const res = await fetch(graphqlUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -73,6 +77,23 @@ export default function LobbyPage() {
 
 
 
+
+    const lobbyQuery = `
+        query GetLobby($id: ID!) {
+        lobby(id: $id) {
+            id
+            host
+            players {
+                uid
+                email
+                displayName
+                prefcol
+                wins
+            }
+        }
+    }
+`;
+
     const sendMessage = `
         mutation SendMessage($lobbyId: ID!, $text: String!, $sender: String!) {
         sendMessage(lobbyId: $lobbyId, text: $text, sender: $sender) {
@@ -92,9 +113,46 @@ export default function LobbyPage() {
     }
 `;
 
+    async function fetchLobby() {
+        const res = await fetch(graphqlUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                query: lobbyQuery,
+                variables: {
+                    id: lobbyCode,
+                },
+            }),
+        });
+        const { data, errors } = await res.json();
+        if (errors) {
+            console.error(errors);
+            return null;
+        }
+
+        return data.lobby;
+    }
+
     useEffect(() => {
         if (user?.email) fetchUserByEmail();
     }, [user]);
+
+    useEffect(() => {
+        if (!lobbyCode) return;
+
+        const fetchPlayers = async () => {
+            const lobby = await fetchLobby();
+            if (lobby) setPlayers(lobby.players);
+        };
+
+        fetchPlayers(); 
+
+        const interval = setInterval(fetchPlayers, 2000);
+
+        return () => clearInterval(interval);
+    }, [lobbyCode]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -171,9 +229,9 @@ export default function LobbyPage() {
 
                 <div className="flex flex-row  bg-gray-700 w-full p-1 gap-2">
 
-                    <div style={{ background: userData?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
+                    <div style={{ background: players[0]?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
-                            {userData?.displayName ?? "User 1"}
+                            {players[0]?.displayName ?? "User 1"}
                         </h1>
                         <div className="w-full h-3/4 items-center justify-center flex">
                             <h1 className="text-6xl font-bold">0</h1>
@@ -182,9 +240,9 @@ export default function LobbyPage() {
 
                     </div>
 
-                    <div className="flex1 p-2  border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
+                    <div style={{ background: players[1]?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
-                            User 2
+                            {players[1]?.displayName ?? "User 2"}
                         </h1>
                         <div className="w-full h-3/4 items-center justify-center flex">
                             <h1 className="text-6xl font-bold">0</h1>
@@ -193,9 +251,9 @@ export default function LobbyPage() {
 
                     </div>
 
-                    <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
+                    <div style={{ background: players[2]?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
-                            User 3
+                            {players[2]?.displayName ?? "User 3"}
                         </h1>
                         <div className="w-full h-3/4 items-center justify-center flex">
                             <h1 className="text-6xl font-bold">0</h1>
@@ -204,9 +262,9 @@ export default function LobbyPage() {
 
                     </div>
 
-                    <div className="flex1 p-2 border rounded h-65 w-full bg-gray-300 mb-5 items-center justify-center ">
+                    <div style={{ background: players[3]?.prefcol ?? "white" }} className="flex1 p-2 border rounded h-65 w-full mb-5 items-center justify-center ">
                         <h1 className="text-center font-bold text-lg">
-                            User 4
+                            {players[3]?.displayName ?? "User 4"}
                         </h1>
                         <div className="w-full h-3/4 items-center justify-center flex">
                             <h1 className="text-6xl font-bold">0</h1>
@@ -224,7 +282,7 @@ export default function LobbyPage() {
                     <div className="p-2 overflow-y-auto flex-1 min-h-0">
                         {messages.map((m) => (
                             <p key={m.id} >
-                                <strong style={{ color: userData?.prefcol ?? "white" }}>{m.sender}: </strong> {m.text}
+                                <strong style={{ color: players.find(p => p.displayName === m.sender)?.prefcol ?? "white" }}>{m.sender}: </strong> {m.text}
                             </p>
                         ))}
                         <div ref={messagesEndRef} />
