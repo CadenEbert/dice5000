@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { subscribeToMessages, listenToGameState, listenToDiceState } from "@/app/services/subscriptions.service";
-import { fetchLobby, fetchUserByEmail, rollLobbyDice, sendLobbyMessage, startGame } from "@/app/services/api.service";
+import { fetchLobby, fetchUserByEmail, rollLobbyDice, sendLobbyMessage, startGame, bankTurn } from "@/app/services/api.service";
 import { GameState, Message, User } from "@/app/services/types";
 
 
@@ -23,9 +23,7 @@ function appendUniqueMessage(previous: Message[], incoming: Message): Message[] 
     return previous.some((existing) => existing.id === incoming.id) ? previous : [...previous, incoming];
 }
 
-function handleBank() {
-    console.log("Bank points");
-}
+
 
 export default function LobbyPage() {
     const [diceDisabled, setDiceDisabled] = useState<boolean[]>([false, false, false, false, false, false]);
@@ -80,6 +78,24 @@ export default function LobbyPage() {
             console.error(error);
         }
     }
+
+    async function handleBank() {
+        if (!lobbyCode || !isCurrentPlayersTurn) return;
+
+        const playerEmail = userData?.email ?? user?.email;
+
+        if (!playerEmail) return;
+
+        try {
+            await bankTurn(lobbyCode, playerEmail, gameState?.currentTurnScore ?? 0);
+            setDiceSelected([false, false, false, false, false, false]);
+            setDiceDisabled([false, false, false, false, false, false]);
+        }
+        catch (error) {
+            console.error(error);
+        }
+    }
+
 
     useEffect(() => {
         setDiceSelected([false, false, false, false, false, false]);

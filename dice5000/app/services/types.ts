@@ -22,6 +22,8 @@ export type GameState = {
     players: User[];
     currentPlayer: User;
     lastTurn: boolean;
+    currentTurnScore: number;
+
 };
 
 export type GameStateUpdatedSub = {

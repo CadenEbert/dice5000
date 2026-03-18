@@ -33,7 +33,12 @@ type RollDiceData = {
   rollDice: {
     lobbyId: string;
     dice: number[];
+
   };
+};
+
+type BankTurnData = {
+  bankTurn: GameState;
 };
 
 const userByEmailQuery = `
@@ -82,6 +87,33 @@ const rollDiceMutation = `
     }
   }
 `;
+
+
+const bankTurnMutation = `
+    mutation bankTurn($lobbyId: ID!, $playerEmail: String!, $currentTurnScore: Int!) {
+      bankTurn(lobbyId: $lobbyId, playerEmail: $playerEmail, currentTurnScore: $currentTurnScore) {
+        lobbyId
+        dice
+        scores
+        players {
+          uid
+          email
+          displayName
+          wins
+          prefcol
+        }
+        currentPlayer {
+          uid
+          email
+          displayName
+          wins
+          prefcol
+        }
+        lastTurn
+        currentTurnScore
+      }
+    }
+  `;
 
 async function graphqlRequest<TData, TVariables>(query: string, variables: TVariables): Promise<TData> {
     const res = await fetch(graphqlUrl, {
@@ -134,6 +166,14 @@ export async function rollLobbyDice(lobbyId: string, playerEmail: string, diceTo
   return data.rollDice.dice;
 }
 
+export async function bankTurn(lobbyId: string, playerEmail: string, currentTurnScore: number): Promise<GameState> {
+    const data = await graphqlRequest<BankTurnData, { lobbyId: string; playerEmail: string; currentTurnScore: number }>(
+        bankTurnMutation,
+        { lobbyId, playerEmail, currentTurnScore }
+    );
+  return data.bankTurn;
+}
+
 export async function startGame(lobbyId: string): Promise<GameState> {
   const mutation = `
     mutation StartGame($lobbyId: ID!) {
@@ -156,6 +196,7 @@ export async function startGame(lobbyId: string): Promise<GameState> {
           prefcol
         }
         lastTurn
+        currentTurnScore
       }
     }
   `;

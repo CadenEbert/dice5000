@@ -68,6 +68,7 @@ const typeDefs = `
     players: [User!]!
     currentPlayer: User!
     lastTurn: Boolean!
+    currentTurnScore: Int!
     }   
 
   type Mutation {
@@ -129,6 +130,7 @@ function toGraphQLGameState(state) {
         players: state.players,
         currentPlayer: state.currentPlayer,
         lastTurn: state.lastTurn,
+        currentTurnScore: state.currentTurnScore,
     };
 }
 
@@ -296,6 +298,38 @@ const resolvers = {
                 if (index < 0 || index > 5) continue;
                 state.dice[index] = Math.floor(Math.random() * 6) + 1;
             }
+
+            let ones = 0;
+            let twos = 0;
+            let threes = 0;
+            let fours = 0;
+            let fives = 0;
+            let sixes = 0;
+
+            for (const die of state.dice) {
+                if (die === 1) ones++;
+                else if (die === 2) twos++;
+                else if (die === 3) threes++;
+                else if (die === 4) fours++;
+                else if (die === 5) fives++;
+                else if (die === 6) sixes++;
+            }
+
+            let turnScore = 0;
+
+            for (let i = 1; i <= 6; i++) {
+                if (i === 1 && ones >= 3) turnScore += 1000 * Math.pow(2, ones - 3);
+                else if (i === 2 && twos >= 3) turnScore += 200 * Math.pow(2, twos - 3);
+                else if (i === 3 && threes >= 3) turnScore += 300 * Math.pow(2, threes - 3);
+                else if (i === 4 && fours >= 3) turnScore += 400 * Math.pow(2, fours - 3);
+                else if (i === 5 && fives >= 3) turnScore += 500 * Math.pow(2, fives - 3);
+                else if (i === 6 && sixes >= 3) turnScore += 600 * Math.pow(2, sixes - 3);
+
+            }
+            turnScore = ones * 100 + fives * 50;
+            state.currentTurnScore = turnScore;
+            
+
 
             const nextDiceState = {
                 diceDisabled: [0, 1, 2, 3, 4, 5].map((i) => !diceToRoll.includes(i)),

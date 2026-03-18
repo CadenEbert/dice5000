@@ -74,6 +74,7 @@ export function listenToGameState(
               prefcol
             }
             lastTurn
+            currentTurnScore
           }
         }
       `,
