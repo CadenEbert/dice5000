@@ -37,6 +37,13 @@ const typeDefs = `
     players: [User!]!
   }
 
+  type diceState {
+    diceDisabled: [Boolean!]!
+    diceSelected: [Boolean!]!
+  }
+
+  
+
 
   type Message {
     id: ID!
@@ -51,8 +58,17 @@ const typeDefs = `
     userByEmail(email: String!): User
     lobby(id: ID!): Lobby
     lobbies: [Lobby!]!
-    getMessages(lobbyId: ID!): [Message!]!
+    
   }
+
+    type GameState {
+    lobbyId: String!
+    dice: [Int!]!
+    scores: [Int!]!
+    players: [User!]!
+    currentPlayer: User!
+    lastTurn: Boolean!
+    }   
 
   type Mutation {
     updateDisplayNameByEmail(email: String!, displayName: String!): User
@@ -60,11 +76,17 @@ const typeDefs = `
     createLobby(hostEmail: String!): Lobby
     joinLobby(lobbyId: ID!, playerEmail: String!): Lobby
     sendMessage(lobbyId: ID!, text: String!, sender: String!): Message
+    startGame(lobbyId: ID!): GameState
+    rollDice(lobbyId: ID!, playerEmail: String!, diceToRoll: [Int!]!, diceSelected: [Boolean!]!): GameState
+    bankTurn(lobbyId: ID!, playerEmail: String!, currentTurnScore: Int!): GameState
+
   }
 
   type Subscription {
     messageAdded(lobbyId: ID!): Message!
     lobbyUpdated(lobbyId: ID!): Lobby!
+    gameStateUpdated(lobbyId: ID!): GameState!
+    diceStateUpdated(lobbyId: ID!): diceState!
   }
 `;
 
@@ -85,7 +107,58 @@ realtimeDb.ref("messages").on("child_added", (snapshot) => {
             lobbyId: message.lobbyId ?? ""
         }
     });
+
 });
+
+
+
+async function getLobbyUsersByEmails(emails) {
+    const snaps = await Promise.all(
+        emails.map((email) =>
+            db.collection("users").where("email", "==", email).limit(1).get()
+        )
+    );
+    return snaps.filter((s) => !s.empty).map((s) => s.docs[0].data());
+}
+
+function toGraphQLGameState(state) {
+    return {
+        lobbyId: state.lobbyId,
+        dice: state.dice,
+        scores: state.scores,
+        players: state.players,
+        currentPlayer: state.currentPlayer,
+        lastTurn: state.lastTurn,
+    };
+}
+
+function publishGameStateSnapshot(snapshot) {
+    const lobbyId = snapshot.key;
+    const state = snapshot.val();
+    if (!lobbyId || !state) return;
+    pubsub.publish("GAMESTATE_UPDATED_" + lobbyId, {
+        gameStateUpdated: toGraphQLGameState(state),
+    });
+}
+
+function publishDiceStateSnapshot(snapshot) {
+    const lobbyId = snapshot.key;
+    const state = snapshot.val();
+    if (!lobbyId || !state) return;
+
+    pubsub.publish("DICESTATE_UPDATED_" + lobbyId, {
+        diceStateUpdated: {
+            diceDisabled: state.diceDisabled ?? [false, false, false, false, false, false],
+            diceSelected: state.diceSelected ?? [false, false, false, false, false, false],
+        },
+    });
+}
+
+
+realtimeDb.ref("gameState").on("child_added", publishGameStateSnapshot);
+realtimeDb.ref("gameState").on("child_changed", publishGameStateSnapshot);
+realtimeDb.ref("diceState").on("child_added", publishDiceStateSnapshot);
+realtimeDb.ref("diceState").on("child_changed", publishDiceStateSnapshot);
 
 const resolvers = {
     Query: {
@@ -124,11 +197,6 @@ const resolvers = {
             });
 
             return allLobbies;
-        },
-        getMessages: async (_, { lobbyId }) => {
-            const snap = await realtimeDb.ref("messages").orderByChild("lobbyId").equalTo(lobbyId).get();
-            if (!snap.val()) return [];
-            return Object.entries(snap.val()).map(([key, val]) => ({ ...val, id: key }));
         }
     },
     Mutation: {
@@ -179,15 +247,97 @@ const resolvers = {
                 lobbyId,
                 text,
                 sender,
-                createdAt: Date.now()
+                createdAt: Date.now(),
             };
 
             await ref.set(message);
-
-            pubsub.publish(`MESSAGE_ADDED_${lobbyId}`, { messageAdded: message });
-
             return message;
-        }
+        },
+        startGame: async (_, { lobbyId }) => {
+            const lobbyDoc = await db.collection("lobbies").doc(lobbyId).get();
+            if (!lobbyDoc.exists) throw new Error("Lobby not found");
+            const lobby = lobbyDoc.data();
+            const players = await getLobbyUsersByEmails(lobby.players);
+
+            if (!players.length) throw new Error("No players in lobby");
+
+            const initialDiceState = {
+                diceDisabled: [false, false, false, false, false, false],
+                diceSelected: [false, false, false, false, false, false],
+            }
+
+            const gameState = {
+                lobbyId,
+                dice: [1, 1, 1, 1, 1, 1],
+                scores: Array(players.length).fill(0),
+                players,
+                currentPlayerIndex: 0,
+                currentPlayer: players[0],
+                lastTurn: false,
+                currentTurnScore: 0,
+            };
+
+
+            await realtimeDb.ref("gameState").child(lobbyId).set(gameState);
+            await realtimeDb.ref("diceState").child(lobbyId).set(initialDiceState);
+
+            return toGraphQLGameState(gameState);
+        },
+        rollDice: async (_, { lobbyId, playerEmail, diceToRoll, diceSelected }) => {
+            const snap = await realtimeDb.ref("gameState").child(lobbyId).get();
+            if (!snap.exists()) throw new Error("Game state not found");
+            const state = snap.val();
+
+            if (state.currentPlayer?.email !== playerEmail) {
+                throw new Error("Not your turn");
+            }
+
+            for (const index of diceToRoll) {
+                if (index < 0 || index > 5) continue;
+                state.dice[index] = Math.floor(Math.random() * 6) + 1;
+            }
+
+            const nextDiceState = {
+                diceDisabled: [0, 1, 2, 3, 4, 5].map((i) => !diceToRoll.includes(i)),
+                diceSelected: Array.isArray(diceSelected) && diceSelected.length === 6
+                    ? diceSelected
+                    : [false, false, false, false, false, false],
+            };
+
+            await realtimeDb.ref("gameState").child(lobbyId).set(state);
+            await realtimeDb.ref("diceState").child(lobbyId).set(nextDiceState);
+
+            return toGraphQLGameState(state);
+        },
+        bankTurn: async (_, { lobbyId, playerEmail, currentTurnScore }) => {
+            const snap = await realtimeDb.ref("gameState").child(lobbyId).get();
+            if (!snap.exists()) throw new Error("Game state not found");
+            const state = snap.val();
+
+            if (state.currentPlayer?.email !== playerEmail) {
+                throw new Error("Not your turn");
+            }
+
+            const i = state.currentPlayerIndex;
+            state.scores[i] = (state.scores[i] || 0) + currentTurnScore;
+
+            const next = (i + 1) % state.players.length;
+            state.currentPlayerIndex = next;
+            state.currentPlayer = state.players[next];
+            state.currentTurnScore = 0;
+            state.dice = [1, 1, 1, 1, 1, 1];
+
+            await realtimeDb.ref("gameState").child(lobbyId).set(state);
+            await realtimeDb.ref("diceState").child(lobbyId).set({
+                diceDisabled: [false, false, false, false, false, false],
+                diceSelected: [false, false, false, false, false, false],
+            });
+
+            
+            return toGraphQLGameState(state);
+        },
+
+
     },
     Lobby: {
         players: async (lobby) => {
@@ -203,10 +353,16 @@ const resolvers = {
     },
     Subscription: {
         messageAdded: {
-            subscribe: (_, { lobbyId }) => pubsub.asyncIterator([`MESSAGE_ADDED_${lobbyId}`]),
+            subscribe: (_, { lobbyId }) => pubsub.asyncIterableIterator(["MESSAGE_ADDED_" + lobbyId]),
         },
         lobbyUpdated: {
-            subscribe: (_, { lobbyId }) => pubsub.asyncIterator([`LOBBY_UPDATED_${lobbyId}`]),
+            subscribe: (_, { lobbyId }) => pubsub.asyncIterableIterator(["LOBBY_UPDATED_" + lobbyId]),
+        },
+        gameStateUpdated: {
+            subscribe: (_, { lobbyId }) => pubsub.asyncIterableIterator(["GAMESTATE_UPDATED_" + lobbyId]),
+        },
+        diceStateUpdated: {
+            subscribe: (_, { lobbyId }) => pubsub.asyncIterableIterator(["DICESTATE_UPDATED_" + lobbyId]),
         },
     },
 };

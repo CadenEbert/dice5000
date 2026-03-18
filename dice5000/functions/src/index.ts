@@ -2,9 +2,10 @@ import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import { createYoga, createSchema, createPubSub } from "graphql-yoga";
 
-
 admin.initializeApp();
+
 const db = admin.firestore();
+export const rtdb = admin.database(); 
 
 
 const pubsub = createPubSub<{
