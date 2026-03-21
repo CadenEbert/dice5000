@@ -1,6 +1,6 @@
 import { GameState, Message, User } from "@/app/services/types";
 
-const graphqlUrl = "http://192.168.0.180:4000/graphql";
+const graphqlUrl = "http://192.168.1.143:4000/graphql";
 
 type GraphQLError = {
     message: string;

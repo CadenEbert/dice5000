@@ -10,6 +10,7 @@ export default function Home() {
   const { loading, isAuthenticated } = useAuthState();
   const router = useRouter();
   const [lobbyCode, setLobbyCode] = useState("");
+  const url = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -43,7 +44,7 @@ export default function Home() {
   `;
 
   async function createLobbyFunc() {
-    const response = await fetch("http://192.168.0.180:4000/graphql", {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -63,7 +64,7 @@ export default function Home() {
   }
 
   async function joinLobbyFunc() {
-    const response = await fetch("http://192.168.0.180:4000/graphql", {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

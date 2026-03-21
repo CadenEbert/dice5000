@@ -7,7 +7,7 @@ import {
 } from "@/app/services/types";
 
 const wsClient = createClient({
-  url: "ws://192.168.0.180:4000/graphql",
+  url: "ws://192.168.1.143:4000/graphql",
 });
 
 export function subscribeToMessages(
