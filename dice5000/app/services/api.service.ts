@@ -115,6 +115,25 @@ const bankTurnMutation = `
     }
   `;
 
+  const closeLobbyMutation = `
+  mutation CloseLobby($lobbyId: ID!, $playerEmail: String!) {
+    closeLobby(lobbyId: $lobbyId, playerEmail: $playerEmail)
+  }
+`;
+
+const incrementWinsMutation = `
+  mutation IncrementWins($email: String!) {
+    incrementWins(email: $email) {
+      uid
+      email
+      displayName
+      wins
+      prefcol
+    }
+  }
+`;
+
+
 async function graphqlRequest<TData, TVariables>(query: string, variables: TVariables): Promise<TData> {
     const res = await fetch(graphqlUrl, {
         method: "POST",
@@ -172,6 +191,22 @@ export async function bankTurn(lobbyId: string, playerEmail: string, currentTurn
         { lobbyId, playerEmail, currentTurnScore }
     );
   return data.bankTurn;
+}
+
+export async function closeLobby(lobbyId: string, playerEmail: string): Promise<boolean> {
+  const data = await graphqlRequest<{ closeLobby: boolean }, { lobbyId: string; playerEmail: string }>(
+    closeLobbyMutation,
+    { lobbyId, playerEmail }
+  );
+  return data.closeLobby;
+}
+
+export async function incrementWins(email: string): Promise<User> {
+  const data = await graphqlRequest<{ incrementWins: User }, { email: string }>(
+    incrementWinsMutation,
+    { email }
+  );
+  return data.incrementWins;
 }
 
 export async function startGame(lobbyId: string): Promise<GameState> {

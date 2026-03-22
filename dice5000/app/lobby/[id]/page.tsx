@@ -2,13 +2,16 @@
 
 import Nav from "@/app/components/nav";
 import { useAuthState } from "@/app/components/useAuthState";
-import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { subscribeToMessages, listenToGameState, listenToDiceState } from "@/app/services/subscriptions.service";
-import { fetchLobby, fetchUserByEmail, rollLobbyDice, sendLobbyMessage, startGame, bankTurn } from "@/app/services/api.service";
+import { fetchLobby, fetchUserByEmail, rollLobbyDice, sendLobbyMessage, startGame, bankTurn, closeLobby, incrementWins } from "@/app/services/api.service";
 import { GameState, Message, User } from "@/app/services/types";
-import { set } from "firebase/database";
+import { useRouter, useParams } from "next/navigation";
+
+
+
+
 
 
 const DIE_FACE_IMAGES = [
@@ -34,14 +37,16 @@ export default function LobbyPage() {
     const [userData, setUserData] = useState<User | null>(null);
     const [players, setPlayers] = useState<User[]>([]);
     const [gameState, setGameState] = useState<GameState | null>(null);
-
+    const [rollsLeft, setRollsLeft] = useState(3);
+    const [gameOver, setGameOver] = useState(false);
     const { user } = useAuthState();
     const params = useParams<{ id: string }>();
     const lobbyCode = params?.id ?? "";
-
-    let rolledNothing = false;
+    const router = useRouter();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const finalRoundAlertShown = useRef(false);
+    const gameOverAlertShown = useRef(false);
 
     const currentPlayerEmail = gameState?.currentPlayer?.email ?? null;
     const myEmail = user?.email ?? userData?.email ?? null;
@@ -53,20 +58,26 @@ export default function LobbyPage() {
     };
 
     async function rollDice() {
-        rolledNothing = false;
         if (!lobbyCode || !isCurrentPlayersTurn) return;
+
 
         const playerEmail = userData?.email ?? user?.email;
         if (!playerEmail) return;
 
         let diceToRoll = diceSelected
-            .map((selected, index) => (!selected ? index : -1))
+            .map((selected, index) => (selected ? -1 : index))
             .filter((index) => index >= 0);
 
 
         if (diceToRoll.length === 0) {
-            
+
             diceToRoll = [0, 1, 2, 3, 4, 5];
+        }
+
+        
+
+        if (gameState?.lastTurn && rollsLeft <= 0) {
+            return;
         }
 
         try {
@@ -87,6 +98,9 @@ export default function LobbyPage() {
         try {
             await bankTurn(lobbyCode, playerEmail, gameState?.currentTurnScore ?? 0);
             setDiceSelected([false, false, false, false, false, false]);
+            if (gameState?.lastTurn && rollsLeft >= 0) {
+                setRollsLeft((prev) => prev - 1);
+            }
         }
         catch (error) {
             console.error(error);
@@ -96,8 +110,10 @@ export default function LobbyPage() {
 
     useEffect(() => {
         setDiceSelected([false, false, false, false, false, false]);
-        
+
     }, [gameState?.currentPlayer?.uid]);
+
+
 
     useEffect(() => {
         if (!lobbyCode) return;
@@ -105,15 +121,20 @@ export default function LobbyPage() {
         const loadLobby = async () => {
             try {
                 const lobby = await fetchLobby(lobbyCode);
+                if (!lobby) {
+                    router.push("/");
+                    return;
+                }
                 setPlayers(lobby?.players ?? []);
-                startGame(lobbyCode);
+                setRollsLeft(lobby?.players?.length ?? 0);
+                await startGame(lobbyCode);
             } catch (error) {
                 console.error(error);
             }
         };
 
         loadLobby();
-    }, [lobbyCode]);
+    }, [lobbyCode, router]);
 
     useEffect(() => {
         if (!lobbyCode) return;
@@ -125,6 +146,27 @@ export default function LobbyPage() {
         });
 
         return () => unsubscribe();
+    }, [lobbyCode]);
+
+
+    useEffect(() => {
+        if (!gameState?.lastTurn || finalRoundAlertShown.current) return;
+        finalRoundAlertShown.current = true;
+        alert("Final round! Everyone gets one last turn!");
+    }, [gameState?.lastTurn]);
+
+    useEffect(() => {
+        if (!gameState?.lastTurn || rollsLeft > 0 || gameOver || gameOverAlertShown.current) return;
+        gameOverAlertShown.current = true;
+        alert("Game Over!");
+        incrementWins(gameState.players[0].email ?? "");
+                
+        setGameOver(true);
+    }, [gameState?.lastTurn, rollsLeft, gameOver]);
+
+    useEffect(() => {
+        finalRoundAlertShown.current = false;
+        gameOverAlertShown.current = false;
     }, [lobbyCode]);
 
     useEffect(() => {
@@ -161,6 +203,8 @@ export default function LobbyPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+
+
     useEffect(() => {
         if (!lobbyCode) return;
 
@@ -170,6 +214,24 @@ export default function LobbyPage() {
 
         return () => unsubscribe();
     }, [lobbyCode]);
+
+    useEffect(() => {
+        if (!gameOver || !lobbyCode) return;
+
+        const playerEmail = userData?.email ?? user?.email;
+        if (!playerEmail) return;
+
+        (async () => {
+            try {
+
+                if (playerEmail === gameState?.players?.[0]?.email) {
+                    await closeLobby(lobbyCode, playerEmail);
+                }
+            } finally {
+                router.push("/");
+            }
+        })();
+    }, [gameOver, lobbyCode, userData?.email, user?.email, gameState?.players, router]);
 
     async function handleChatKey(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key !== "Enter") return;
@@ -212,6 +274,14 @@ export default function LobbyPage() {
                                 </button>
                             );
                         })}
+                    </div>
+
+                    <div>
+                        {gameState?.currentTurnScore !== undefined && (
+                            <h2 className="text-center text-xl font-bold text-white mb-5">
+                                Current Turn Score: {gameState.currentTurnScore}
+                            </h2>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-center w-full gap-2">
@@ -271,7 +341,7 @@ export default function LobbyPage() {
                                 <strong style={{ color: players.find((p) => p.displayName === m.sender)?.prefcol ?? "white" }}>
                                     {m.sender}:
                                 </strong>
-                                {m.text}
+                                  {m.text}
                             </p>
                         ))}
                         <div ref={messagesEndRef} />

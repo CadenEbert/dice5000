@@ -80,6 +80,8 @@ const typeDefs = `
     startGame(lobbyId: ID!): GameState
     rollDice(lobbyId: ID!, playerEmail: String!, diceToRoll: [Int!]!, diceSelected: [Boolean!]!): GameState
     bankTurn(lobbyId: ID!, playerEmail: String!, currentTurnScore: Int!): GameState
+    closeLobby(lobbyId: ID!, playerEmail: String!): Boolean
+    incrementWins(email: String!): User
 
   }
 
@@ -285,7 +287,6 @@ const resolvers = {
             return toGraphQLGameState(gameState);
         },
         rollDice: async (_, { lobbyId, playerEmail, diceToRoll, diceSelected }) => {
-            let rolledNothing = false;
             const snap = await realtimeDb.ref("gameState").child(lobbyId).get();
             if (!snap.exists()) throw new Error("Game state not found");
             const state = snap.val();
@@ -294,48 +295,19 @@ const resolvers = {
                 throw new Error("Not your turn");
             }
 
+
+
             for (const index of diceToRoll) {
                 if (index < 0 || index > 5) continue;
                 state.dice[index] = Math.floor(Math.random() * 6) + 1;
             }
-            let countSelected = 0;
-            for (let i = 0; i < 6; i++) {
-                if (diceSelected[i]) {
-                    if (state.dice[i] === 1 || state.dice[i] === 5) {
-                        countSelected++;
-                    } else {
-                        rolledNothing = true;
-                    }
-                }
-            }
 
-            if (rolledNothing) {
-                state.currentTurnScore = 0;
-                state.dice = [1, 1, 1, 1, 1, 1];
+            const rolledIndices = [...new Set(diceToRoll)].filter(
+                (i) => Number.isInteger(i) && i >= 0 && i < state.dice.length
+            );
 
-                const next = (state.currentPlayerIndex + 1) % state.players.length;
-                state.currentPlayerIndex = next;
-                state.currentPlayer = state.players[next];
-
-                const nextDiceState = {
-                    diceSelected: [false, false, false, false, false, false],
-                };
-                await realtimeDb.ref("gameState").child(lobbyId).set(state);
-                await realtimeDb.ref("diceState").child(lobbyId).set(nextDiceState);
-                return toGraphQLGameState(state);
-            }
-
-            let ones = 0;
-            let twos = 0;
-            let threes = 0;
-            let fours = 0;
-            let fives = 0;
-            let sixes = 0;
-
-           state.currentTurnScore = 0;
-
-           
-            for (let i = 0; i < 6; i++) {
+            let ones = 0, twos = 0, threes = 0, fours = 0, fives = 0, sixes = 0;
+            for (const i of rolledIndices) {
                 const die = state.dice[i];
                 if (die === 1) ones++;
                 else if (die === 2) twos++;
@@ -345,33 +317,37 @@ const resolvers = {
                 else if (die === 6) sixes++;
             }
 
-         
-            if (ones >= 3) state.currentTurnScore += 1000 * Math.pow(2, ones - 3);
-            if (twos >= 3) state.currentTurnScore += 200 * Math.pow(2, twos - 3);
-            if (threes >= 3) state.currentTurnScore += 300 * Math.pow(2, threes - 3);
-            if (fours >= 3) state.currentTurnScore += 400 * Math.pow(2, fours - 3);
-            if (fives >= 3) state.currentTurnScore += 500 * Math.pow(2, fives - 3);
-            if (sixes >= 3) state.currentTurnScore += 600 * Math.pow(2, sixes - 3);
 
-          
+            const hasTriple = ones >= 3 || twos >= 3 || threes >= 3 || fours >= 3 || fives >= 3 || sixes >= 3;
+            const rolledNothing = ones === 0 && fives === 0 && !hasTriple;
+
+            if (rolledNothing) {
+                state.currentTurnScore = 0;
+                state.dice = [1, 1, 1, 1, 1, 1];
+                const next = (state.currentPlayerIndex + 1) % state.players.length;
+                state.currentPlayerIndex = next;
+                state.currentPlayer = state.players[next];
+                await realtimeDb.ref("gameState").child(lobbyId).set(state);
+                await realtimeDb.ref("diceState").child(lobbyId).set({
+                    diceSelected: [false, false, false, false, false, false],
+                });
+                return toGraphQLGameState(state);
+            }
+
+
+            if (ones >= 3) state.currentTurnScore += 1000;
+            if (twos >= 3) state.currentTurnScore += 200;
+            if (threes >= 3) state.currentTurnScore += 300;
+            if (fours >= 3) state.currentTurnScore += 400;
+            if (fives >= 3) state.currentTurnScore += 500;
+            if (sixes >= 3) state.currentTurnScore += 600;
+
             const singleOnes = ones >= 3 ? ones % 3 : ones;
             const singleFives = fives >= 3 ? fives % 3 : fives;
             state.currentTurnScore += (singleOnes * 100) + (singleFives * 50);
 
-
-            if (rolledNothing) {
-                state.dice = [1, 1, 1, 1, 1, 1];
-            }
-
-
-            const nextDiceState = {
-                diceSelected: diceSelected,
-            };
-
-
             await realtimeDb.ref("gameState").child(lobbyId).set(state);
-            await realtimeDb.ref("diceState").child(lobbyId).set(nextDiceState);
-
+            await realtimeDb.ref("diceState").child(lobbyId).set({ diceSelected });
             return toGraphQLGameState(state);
         },
         bankTurn: async (_, { lobbyId, playerEmail, currentTurnScore }) => {
@@ -386,6 +362,11 @@ const resolvers = {
             const i = state.currentPlayerIndex;
             state.scores[i] = (state.scores[i] || 0) + currentTurnScore;
 
+            
+            if (!state.lastTurn && state.scores.some((score) => score >= 5000)) {
+                state.lastTurn = true;
+            }
+
             const next = (i + 1) % state.players.length;
             state.currentPlayerIndex = next;
             state.currentPlayer = state.players[next];
@@ -399,6 +380,33 @@ const resolvers = {
 
 
             return toGraphQLGameState(state);
+        },
+        closeLobby: async (_, { lobbyId, playerEmail }) => {
+            const doc = await db.collection("lobbies").doc(lobbyId).get();
+            if (!doc.exists) return true;
+
+            const lobby = doc.data();
+            if (lobby.host !== playerEmail) {
+                throw new Error("Only host can close lobby");
+            }
+
+            await Promise.all([
+                db.collection("lobbies").doc(lobbyId).delete(),
+                realtimeDb.ref("gameState").child(lobbyId).remove(),
+                realtimeDb.ref("diceState").child(lobbyId).remove(),
+            ]);
+
+            delete lobbies[lobbyId];
+            return true;
+        },
+        incrementWins: async (_, { email }) => {
+            const snap = await db.collection("users").where("email", "==", email).limit(1).get();
+            if (snap.empty) throw new Error("User not found");
+            const ref = snap.docs[0].ref;
+            const user = snap.docs[0].data();
+            const wins = (user.wins || 0) + 1;
+            await ref.update({ wins });
+            return (await ref.get()).data();
         },
 
 
