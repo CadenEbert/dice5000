@@ -332,8 +332,11 @@ const resolvers = {
             let fives = 0;
             let sixes = 0;
 
-            for (const index of diceToRoll) {
-                const die = state.dice[index];
+           state.currentTurnScore = 0;
+
+           
+            for (let i = 0; i < 6; i++) {
+                const die = state.dice[i];
                 if (die === 1) ones++;
                 else if (die === 2) twos++;
                 else if (die === 3) threes++;
@@ -342,25 +345,20 @@ const resolvers = {
                 else if (die === 6) sixes++;
             }
 
-            let turnScore = 0;
+         
+            if (ones >= 3) state.currentTurnScore += 1000 * Math.pow(2, ones - 3);
+            if (twos >= 3) state.currentTurnScore += 200 * Math.pow(2, twos - 3);
+            if (threes >= 3) state.currentTurnScore += 300 * Math.pow(2, threes - 3);
+            if (fours >= 3) state.currentTurnScore += 400 * Math.pow(2, fours - 3);
+            if (fives >= 3) state.currentTurnScore += 500 * Math.pow(2, fives - 3);
+            if (sixes >= 3) state.currentTurnScore += 600 * Math.pow(2, sixes - 3);
 
-            for (let i = 1; i <= 6; i++) {
-                if (i === 1 && ones >= 3) turnScore += 1000 * Math.pow(2, ones - 3);
-                else if (i === 2 && twos >= 3) turnScore += 200 * Math.pow(2, twos - 3);
-                else if (i === 3 && threes >= 3) turnScore += 300 * Math.pow(2, threes - 3);
-                else if (i === 4 && fours >= 3) turnScore += 400 * Math.pow(2, fours - 3);
-                else if (i === 5 && fives >= 3) turnScore += 500 * Math.pow(2, fives - 3);
-                else if (i === 6 && sixes >= 3) turnScore += 600 * Math.pow(2, sixes - 3);
+          
+            const singleOnes = ones >= 3 ? ones % 3 : ones;
+            const singleFives = fives >= 3 ? fives % 3 : fives;
+            state.currentTurnScore += (singleOnes * 100) + (singleFives * 50);
 
-            }
 
-            const singleOnes = ones >=3 ? ones % 3 : ones;
-            const singleFives = fives >=3 ? fives % 3 : fives;
-
-            turnScore += singleOnes * 100;
-            turnScore += singleFives * 50;
-            
-            state.currentTurnScore = turnScore;
             if (rolledNothing) {
                 state.dice = [1, 1, 1, 1, 1, 1];
             }
