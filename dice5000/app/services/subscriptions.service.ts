@@ -103,14 +103,13 @@ export function listenToGameState(
 
 export function listenToDiceState(
   lobbyCode: string,
-  onStateChange: (diceDisabled: boolean[], diceSelected: boolean[]) => void
+  onStateChange: (diceSelected: boolean[]) => void
 ): () => void {
   const unsubscribe = wsClient.subscribe(
     {
       query: `
       subscription ($lobbyId: ID!) {
       diceStateUpdated(lobbyId: $lobbyId) {
-        diceDisabled
         diceSelected
       }
     }
@@ -123,11 +122,11 @@ export function listenToDiceState(
           console.error(JSON.stringify(result.errors, null, 2));
           return;
         }
-        const data = result.data as { diceStateUpdated: { diceDisabled: boolean[]; diceSelected: boolean[] } } | undefined;
+        const data = result.data as { diceStateUpdated: { diceSelected: boolean[] } } | undefined;
         const diceState = data?.diceStateUpdated;
         if (!diceState) return;
 
-        onStateChange(diceState.diceDisabled, diceState.diceSelected);
+        onStateChange(diceState.diceSelected);
       },
       error: console.error,
       complete: () => {},

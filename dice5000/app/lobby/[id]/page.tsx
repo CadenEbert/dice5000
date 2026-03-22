@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { subscribeToMessages, listenToGameState, listenToDiceState } from "@/app/services/subscriptions.service";
 import { fetchLobby, fetchUserByEmail, rollLobbyDice, sendLobbyMessage, startGame, bankTurn } from "@/app/services/api.service";
 import { GameState, Message, User } from "@/app/services/types";
+import { set } from "firebase/database";
 
 
 const DIE_FACE_IMAGES = [
@@ -26,7 +27,6 @@ function appendUniqueMessage(previous: Message[], incoming: Message): Message[] 
 
 
 export default function LobbyPage() {
-    const [diceDisabled, setDiceDisabled] = useState<boolean[]>([false, false, false, false, false, false]);
     const [diceSelected, setDiceSelected] = useState<boolean[]>([false, false, false, false, false, false]);
     const [diceValues, setDiceValues] = useState<number[]>([1, 1, 1, 1, 1, 1]);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -38,6 +38,8 @@ export default function LobbyPage() {
     const { user } = useAuthState();
     const params = useParams<{ id: string }>();
     const lobbyCode = params?.id ?? "";
+
+    let rolledNothing = false;
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +53,7 @@ export default function LobbyPage() {
     };
 
     async function rollDice() {
+        rolledNothing = false;
         if (!lobbyCode || !isCurrentPlayersTurn) return;
 
         const playerEmail = userData?.email ?? user?.email;
@@ -62,18 +65,13 @@ export default function LobbyPage() {
 
 
         if (diceToRoll.length === 0) {
+            
             diceToRoll = [0, 1, 2, 3, 4, 5];
         }
 
         try {
             await rollLobbyDice(lobbyCode, playerEmail, diceToRoll, diceSelected);
             setDiceSelected([false, false, false, false, false, false]);
-
-            for (const index of diceToRoll) {
-                setDiceDisabled((previous) =>
-                    previous.map((_, i) => !diceToRoll.includes(i))
-                );
-            }
         } catch (error) {
             console.error(error);
         }
@@ -89,7 +87,6 @@ export default function LobbyPage() {
         try {
             await bankTurn(lobbyCode, playerEmail, gameState?.currentTurnScore ?? 0);
             setDiceSelected([false, false, false, false, false, false]);
-            setDiceDisabled([false, false, false, false, false, false]);
         }
         catch (error) {
             console.error(error);
@@ -133,8 +130,7 @@ export default function LobbyPage() {
     useEffect(() => {
         if (!lobbyCode) return;
 
-        const unsubscribe = listenToDiceState(lobbyCode, (diceDisabled, diceSelected) => {
-            setDiceDisabled(diceDisabled);
+        const unsubscribe = listenToDiceState(lobbyCode, (diceSelected) => {
             setDiceSelected(diceSelected);
         });
 
@@ -209,7 +205,7 @@ export default function LobbyPage() {
                                     id={`die${index + 1}`}
                                     className={`w-1/9 h-1/9 transition disabled:cursor-not-allowed disabled:[&>img]:grayscale disabled:[&>img]:opacity-40 ${isSelected ? "ring-4 ring-yellow-300 rounded-lg scale-105" : ""}`}
                                     onClick={() => toggleDie(index)}
-                                    disabled={!isCurrentPlayersTurn || diceDisabled[index]}
+                                    disabled={!isCurrentPlayersTurn}
                                     aria-pressed={isSelected}
                                 >
                                     <img src={DIE_FACE_IMAGES[faceIndex]} alt={`Die face ${faceValue}`} />

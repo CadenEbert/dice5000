@@ -8,6 +8,7 @@ const { PubSub } = require("graphql-subscriptions");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const path = require("node:path");
+const { default: next } = require("next");
 
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
     ? path.resolve(__dirname, process.env.GOOGLE_APPLICATION_CREDENTIALS)
@@ -38,7 +39,6 @@ const typeDefs = `
   }
 
   type diceState {
-    diceDisabled: [Boolean!]!
     diceSelected: [Boolean!]!
   }
 
@@ -264,7 +264,6 @@ const resolvers = {
             if (!players.length) throw new Error("No players in lobby");
 
             const initialDiceState = {
-                diceDisabled: [false, false, false, false, false, false],
                 diceSelected: [false, false, false, false, false, false],
             }
 
@@ -286,6 +285,7 @@ const resolvers = {
             return toGraphQLGameState(gameState);
         },
         rollDice: async (_, { lobbyId, playerEmail, diceToRoll, diceSelected }) => {
+            let rolledNothing = false;
             const snap = await realtimeDb.ref("gameState").child(lobbyId).get();
             if (!snap.exists()) throw new Error("Game state not found");
             const state = snap.val();
@@ -298,6 +298,32 @@ const resolvers = {
                 if (index < 0 || index > 5) continue;
                 state.dice[index] = Math.floor(Math.random() * 6) + 1;
             }
+            let countSelected = 0;
+            for (let i = 0; i < 6; i++) {
+                if (diceSelected[i]) {
+                    if (state.dice[i] === 1 || state.dice[i] === 5) {
+                        countSelected++;
+                    } else {
+                        rolledNothing = true;
+                    }
+                }
+            }
+
+            if (rolledNothing) {
+                state.currentTurnScore = 0;
+                state.dice = [1, 1, 1, 1, 1, 1];
+
+                const next = (state.currentPlayerIndex + 1) % state.players.length;
+                state.currentPlayerIndex = next;
+                state.currentPlayer = state.players[next];
+
+                const nextDiceState = {
+                    diceSelected: [false, false, false, false, false, false],
+                };
+                await realtimeDb.ref("gameState").child(lobbyId).set(state);
+                await realtimeDb.ref("diceState").child(lobbyId).set(nextDiceState);
+                return toGraphQLGameState(state);
+            }
 
             let ones = 0;
             let twos = 0;
@@ -306,7 +332,8 @@ const resolvers = {
             let fives = 0;
             let sixes = 0;
 
-            for (const die of state.dice) {
+            for (const index of diceToRoll) {
+                const die = state.dice[index];
                 if (die === 1) ones++;
                 else if (die === 2) twos++;
                 else if (die === 3) threes++;
@@ -326,17 +353,23 @@ const resolvers = {
                 else if (i === 6 && sixes >= 3) turnScore += 600 * Math.pow(2, sixes - 3);
 
             }
-            turnScore = ones * 100 + fives * 50;
-            state.currentTurnScore = turnScore;
+
+            const singleOnes = ones >=3 ? ones % 3 : ones;
+            const singleFives = fives >=3 ? fives % 3 : fives;
+
+            turnScore += singleOnes * 100;
+            turnScore += singleFives * 50;
             
+            state.currentTurnScore = turnScore;
+            if (rolledNothing) {
+                state.dice = [1, 1, 1, 1, 1, 1];
+            }
 
 
             const nextDiceState = {
-                diceDisabled: [0, 1, 2, 3, 4, 5].map((i) => !diceToRoll.includes(i)),
-                diceSelected: Array.isArray(diceSelected) && diceSelected.length === 6
-                    ? diceSelected
-                    : [false, false, false, false, false, false],
+                diceSelected: diceSelected,
             };
+
 
             await realtimeDb.ref("gameState").child(lobbyId).set(state);
             await realtimeDb.ref("diceState").child(lobbyId).set(nextDiceState);
@@ -363,11 +396,10 @@ const resolvers = {
 
             await realtimeDb.ref("gameState").child(lobbyId).set(state);
             await realtimeDb.ref("diceState").child(lobbyId).set({
-                diceDisabled: [false, false, false, false, false, false],
                 diceSelected: [false, false, false, false, false, false],
             });
 
-            
+
             return toGraphQLGameState(state);
         },
 
