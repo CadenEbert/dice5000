@@ -41,7 +41,7 @@ export default function LobbyPage() {
     const [rollsLeft, setRollsLeft] = useState(3);
     const [gameOver, setGameOver] = useState(false);
     const { user } = useAuthState();
-    const { isAuthenticated } = useAuthState();
+  
     const params = useParams<{ id: string }>();
     const lobbyCode = params?.id ?? "";
     const router = useRouter();
@@ -110,11 +110,7 @@ export default function LobbyPage() {
         }
     }
 
-    useEffect(() => {
-        if (!isAuthenticated) {
-            router.replace("/login");
-        }
-    }, [isAuthenticated, router]);
+   
 
     useEffect(() => {
         setDiceSelected([false, false, false, false, false, false]);

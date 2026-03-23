@@ -122,19 +122,7 @@ describe('Lobby Page', () => {
 
 
 
-    it('redirects to login if not authenticated', async () => {
-        mockUseAuthState.mockReturnValue({
-            user: user,
-            loading: false,
-            isAuthenticated: false,
-        })
-
-        await act(async () => {
-            render(<Page />)
-        })
-
-        expect(mockReplace).toHaveBeenCalledWith('/login')
-    })
+    
 
     it('redirects if lobby is not found', async () => {
         (fetchLobby as jest.Mock).mockResolvedValueOnce(null)

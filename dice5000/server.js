@@ -10,6 +10,26 @@ const admin = require("firebase-admin");
 const path = require("node:path");
 const { default: next } = require("next");
 
+
+
+
+const app = express();
+app.use(cors());
+
+
+const httpServer = createServer(app);
+const wsServer = new WebSocketServer({ server: httpServer, path: "/graphql" });
+
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp"); 
+    next();
+});
+
+app.use(cors());
+
+
+
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
     ? path.resolve(__dirname, process.env.GOOGLE_APPLICATION_CREDENTIALS)
     : path.join(__dirname, "serviceAccount.json");
@@ -92,6 +112,8 @@ const typeDefs = `
     diceStateUpdated(lobbyId: ID!): diceState!
   }
 `;
+
+
 
 const db = admin.firestore();
 const realtimeDb = admin.database();
@@ -440,13 +462,8 @@ const resolvers = {
 };
 
 const schema = makeExecutableSchema({ typeDefs, resolvers });
-
-const app = express();
-app.use(cors());
 app.all("/graphql", createHandler({ schema }));
 
-const httpServer = createServer(app);
-const wsServer = new WebSocketServer({ server: httpServer, path: "/graphql" });
 
 useServer(
     {
@@ -458,3 +475,4 @@ useServer(
 );
 
 httpServer.listen(4000, () => console.log("Server running on port 4000"));
+module.exports = { app, schema, httpServer, resolvers };
