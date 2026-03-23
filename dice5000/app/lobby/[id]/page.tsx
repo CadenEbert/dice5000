@@ -14,6 +14,7 @@ import { useRouter, useParams } from "next/navigation";
 
 
 
+
 const DIE_FACE_IMAGES = [
     "/images/dice-six-faces-one.png",
     "/images/dice-six-faces-two.png",
@@ -40,9 +41,11 @@ export default function LobbyPage() {
     const [rollsLeft, setRollsLeft] = useState(3);
     const [gameOver, setGameOver] = useState(false);
     const { user } = useAuthState();
+    const { isAuthenticated } = useAuthState();
     const params = useParams<{ id: string }>();
     const lobbyCode = params?.id ?? "";
     const router = useRouter();
+
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const finalRoundAlertShown = useRef(false);
@@ -74,7 +77,7 @@ export default function LobbyPage() {
             diceToRoll = [0, 1, 2, 3, 4, 5];
         }
 
-        
+
 
         if (gameState?.lastTurn && rollsLeft <= 0) {
             return;
@@ -107,6 +110,11 @@ export default function LobbyPage() {
         }
     }
 
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.replace("/login");
+        }
+    }, [isAuthenticated, router]);
 
     useEffect(() => {
         setDiceSelected([false, false, false, false, false, false]);
@@ -160,7 +168,7 @@ export default function LobbyPage() {
         gameOverAlertShown.current = true;
         alert("Game Over!");
         incrementWins(gameState.players[0].email ?? "");
-                
+
         setGameOver(true);
     }, [gameState?.lastTurn, rollsLeft, gameOver]);
 
@@ -341,7 +349,7 @@ export default function LobbyPage() {
                                 <strong style={{ color: players.find((p) => p.displayName === m.sender)?.prefcol ?? "white" }}>
                                     {m.sender}:
                                 </strong>
-                                  {m.text}
+                                {m.text}
                             </p>
                         ))}
                         <div ref={messagesEndRef} />

@@ -25,12 +25,9 @@ Dice5000 is a dice game where players take turns rolling dice trying to rack up 
 - Firestore + Realtime Database
 - Firebase Admin SDK
 
+## Demo
+
 ## Repository Layout
-
-This repository has a nested project directory:
-
-- Root: docs and git metadata
-- App/server project: `dice5000/`
 
 All commands below should be run from:
 
@@ -121,34 +118,15 @@ Then open:
 	- game state updates
 	- dice state updates
 
-## Deployment Guidance (Current State)
 
-You can deploy as a beta now if local startup is stable.
+## Improvements
 
-Recommended split:
+- Game logic is not perfect
+- No reconnection for active lobbies
+- No match history for viewing past games
 
-- Frontend: Vercel
-- GraphQL/WebSocket server: Render or Railway (must support WebSockets)
+## Known Issues
 
-Before public release:
-
-1. Verify `npm run server` and `npm run dev` start cleanly.
-2. Test one full game end-to-end with two users.
-3. Keep secrets private and set environment variables on hosting platforms.
-
-## Known Risks / Improvements
-
-- Some game lifecycle logic is still evolving.
-- Consider moving all end-game and winner persistence logic fully to server-side mutations.
-- Add tests around scoring and final-round transitions.
-
-## Contributing
-
-1. Fork and clone
-2. Create a feature branch
-3. Make changes and run lint
-4. Open a pull request
-
-## License
-
-Add your preferred license here (MIT, Apache-2.0, etc.).
+- No real sign up for just email and password
+- Only the host can start a game
+- Need to move more things to the server side
