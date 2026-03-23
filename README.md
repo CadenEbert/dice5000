@@ -27,7 +27,8 @@ Dice5000 is a dice game where players take turns rolling dice trying to rack up 
 
 ## Demo
 
-<video src="https://github.com/user-attachments/assets/2e941bc4-ae47-4fbd-b374-3e29509d6d3f" controls="controls" style="max-width: 100%;"></video>
+<video src="https://github.com/user-attachments/assets/a07c85f1-6c46-450c-a660-079f352baa6d" controls="controls"></video>
+
 
 
 
