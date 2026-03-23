@@ -33,7 +33,22 @@ Dice5000 is a dice game where players take turns rolling dice trying to rack up 
 
 
 
+# Firebase Client-Side (Next.js)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key_here
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=1:your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-your_measurement_id
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
 
+# GraphQL Connection
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
+
+# Server-Side Only
+# This is the filename of your JSON key in the dice5000/ folder
+GOOGLE_APPLICATION_CREDENTIALS=serviceAccount.json
 
 
 ## Repository Layout
